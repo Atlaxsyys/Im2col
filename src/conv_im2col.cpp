@@ -1,0 +1,124 @@
+#include "conv_im2col.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <vector>
+
+namespace
+{
+void im2col_nchw (
+    const float* input_n,
+    std::size_t in_c,
+    std::size_t in_h,
+    std::size_t in_w,
+    std::size_t k_h,
+    std::size_t k_w,
+    std::size_t out_h,
+    std::size_t out_w,
+    float* col)
+{
+    const std::size_t out_size = out_h * out_w;
+    const std::size_t in_c_stride = in_h * in_w;
+
+    std::size_t k_idx = 0;
+    for (std::size_t c = 0; c < in_c; ++c)
+    {
+        const float* input_c = input_n + c * in_c_stride;
+
+        for (std::size_t kh = 0; kh < k_h; ++kh)
+        {
+            for (std::size_t kw = 0; kw < k_w; ++kw, ++k_idx)
+            {
+                float* col_row = col + k_idx * out_size;
+                std::size_t out_idx = 0;
+
+                for (std::size_t oh = 0; oh < out_h; ++oh)
+                {
+                    const float* input_row = input_c + (oh + kh) * in_w + kw;
+                    for (std::size_t ow = 0; ow < out_w; ++ow, ++out_idx)
+                    {
+                        col_row[out_idx] = input_row[ow];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void matmul (
+    const float* a,
+    const float* b,
+    float* c,
+    std::size_t m,
+    std::size_t k,
+    std::size_t n)
+{
+    std::fill(c, c + m * n, 0.0f);
+
+    for (std::size_t i = 0; i < m; ++i)
+    {
+        const float* a_row = a + i * k;
+        float* c_row = c + i * n;
+
+        for (std::size_t p = 0; p < k; ++p)
+        {
+            const float a_ip = a_row[p];
+            if (a_ip == 0.0f)
+            {
+                continue;
+            }
+
+            const float* b_row = b + p * n;
+            for (std::size_t j = 0; j < n; ++j)
+            {
+                c_row[j] += a_ip * b_row[j];
+            }
+        }
+    }
+}
+} // namespace
+
+Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
+{
+    const std::size_t batch = input.n();
+    const std::size_t in_c = input.c();
+    const std::size_t in_h = input.h();
+    const std::size_t in_w = input.w();
+
+    const std::size_t out_c = kernel.n();
+    const std::size_t k_c = kernel.c();
+    const std::size_t k_h = kernel.h();
+    const std::size_t k_w = kernel.w();
+
+    if (in_c != k_c || in_h < k_h || in_w < k_w)
+    {
+        return Tensor();
+    }
+
+    const std::size_t out_h = in_h - k_h + 1;
+    const std::size_t out_w = in_w - k_w + 1;
+    const std::size_t k_size = in_c * k_h * k_w;
+    const std::size_t out_size = out_h * out_w;
+
+    Tensor output (batch, out_c, out_h, out_w);
+
+    const float* input_data = input.data();
+    const float* kernel_data = kernel.data();
+    float* output_data = output.data();
+
+    const std::size_t in_n_stride = in_c * in_h * in_w;
+    const std::size_t out_n_stride = out_c * out_size;
+
+    std::vector<float> col(k_size * out_size);
+
+    for (std::size_t n = 0; n < batch; ++n)
+    {
+        const float* input_n = input_data + n * in_n_stride;
+        float* output_n = output_data + n * out_n_stride;
+
+        im2col_nchw (input_n, in_c, in_h, in_w, k_h, k_w, out_h, out_w, col.data());
+        matmul (kernel_data, col.data(), output_n, out_c, k_size, out_size);
+    }
+
+    return output;
+}

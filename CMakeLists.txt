@@ -11,6 +11,7 @@ add_library(im2col_lib
     src/tensor.cpp
     src/matrix.cpp
     src/conv_naive.cpp
+    src/conv_im2col.cpp
 )
 
 target_include_directories(im2col_lib
