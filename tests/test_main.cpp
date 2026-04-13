@@ -1,3 +1,4 @@
+#include "conv_im2col.hpp"
 #include "conv_naive.hpp"
 #include "matrix.hpp"
 #include "tensor.hpp"
@@ -134,4 +135,53 @@ TEST(ConvNaiveTest, MultiChannelMultiOutput)
     EXPECT_FLOAT_EQ(out(0, 1, 0, 1), 16.0f);
     EXPECT_FLOAT_EQ(out(0, 1, 1, 0), 24.0f);
     EXPECT_FLOAT_EQ(out(0, 1, 1, 1), 28.0f);
+}
+
+TEST(ConvParityTest, Im2colMatchesNaiveOnRandomShapes)
+{
+    struct Case
+    {
+        std::size_t n;
+        std::size_t in_c;
+        std::size_t in_h;
+        std::size_t in_w;
+        std::size_t out_c;
+        std::size_t k_h;
+        std::size_t k_w;
+        std::uint32_t input_seed;
+        std::uint32_t kernel_seed;
+    };
+
+    const Case cases[] = {
+        {1, 1, 5, 5, 1, 3, 3, 11u, 101u},
+        {1, 3, 7, 7, 4, 3, 3, 12u, 102u},
+        {2, 3, 8, 6, 5, 2, 2, 13u, 103u},
+        {2, 4, 9, 9, 6, 3, 2, 14u, 104u},
+        {1, 2, 6, 10, 3, 1, 5, 15u, 105u},
+    };
+
+    for (std::size_t case_idx = 0; case_idx < std::size(cases); ++case_idx)
+    {
+        const Case& tc = cases[case_idx];
+
+        Tensor input (tc.n, tc.in_c, tc.in_h, tc.in_w);
+        Tensor kernel (tc.out_c, tc.in_c, tc.k_h, tc.k_w);
+        input.fill_random(tc.input_seed, -1.0f, 1.0f);
+        kernel.fill_random(tc.kernel_seed, -1.0f, 1.0f);
+
+        const Tensor out_naive = conv_naive (input, kernel);
+        const Tensor out_im2col = conv_im2col (input, kernel);
+
+        EXPECT_EQ(out_im2col.n(), out_naive.n()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.c(), out_naive.c()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.h(), out_naive.h()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.w(), out_naive.w()) << "case #" << case_idx;
+        ASSERT_EQ(out_im2col.size(), out_naive.size()) << "case #" << case_idx;
+
+        for (std::size_t i = 0; i < out_naive.size(); ++i)
+        {
+            EXPECT_NEAR(out_im2col.data()[i], out_naive.data()[i], 1e-4f)
+                << "case #" << case_idx << ", element #" << i;
+        }
+    }
 }
