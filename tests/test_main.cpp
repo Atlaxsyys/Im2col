@@ -185,3 +185,73 @@ TEST(ConvParityTest, Im2colMatchesNaiveOnRandomShapes)
         }
     }
 }
+
+TEST(ConvEdgeCaseTest, ReturnsEmptyWhenInputChannelsDoNotMatchKernelChannels)
+{
+    Tensor input (2, 3, 8, 8);
+    Tensor kernel (4, 2, 3, 3);
+    input.fill_random(21u, -1.0f, 1.0f);
+    kernel.fill_random(121u, -1.0f, 1.0f);
+
+    const Tensor out_naive = conv_naive (input, kernel);
+    const Tensor out_im2col = conv_im2col (input, kernel);
+
+    EXPECT_EQ(out_naive.size(), 0u);
+    EXPECT_EQ(out_naive.n(), 0u);
+    EXPECT_EQ(out_naive.c(), 0u);
+    EXPECT_EQ(out_naive.h(), 0u);
+    EXPECT_EQ(out_naive.w(), 0u);
+
+    EXPECT_EQ(out_im2col.size(), 0u);
+    EXPECT_EQ(out_im2col.n(), 0u);
+    EXPECT_EQ(out_im2col.c(), 0u);
+    EXPECT_EQ(out_im2col.h(), 0u);
+    EXPECT_EQ(out_im2col.w(), 0u);
+}
+
+TEST(ConvEdgeCaseTest, ReturnsEmptyWhenKernelIsLargerThanInput)
+{
+    Tensor input (1, 2, 4, 5);
+    Tensor kernel_h_large (3, 2, 5, 3);
+    Tensor kernel_w_large (3, 2, 3, 6);
+    input.fill_random(22u, -1.0f, 1.0f);
+    kernel_h_large.fill_random(122u, -1.0f, 1.0f);
+    kernel_w_large.fill_random(123u, -1.0f, 1.0f);
+
+    const Tensor out_naive_h = conv_naive (input, kernel_h_large);
+    const Tensor out_im2col_h = conv_im2col (input, kernel_h_large);
+    const Tensor out_naive_w = conv_naive (input, kernel_w_large);
+    const Tensor out_im2col_w = conv_im2col (input, kernel_w_large);
+
+    EXPECT_EQ(out_naive_h.size(), 0u);
+    EXPECT_EQ(out_im2col_h.size(), 0u);
+    EXPECT_EQ(out_naive_w.size(), 0u);
+    EXPECT_EQ(out_im2col_w.size(), 0u);
+}
+
+TEST(ConvEdgeCaseTest, ExactKernelFitProducesOneByOneOutputAndParity)
+{
+    Tensor input (2, 3, 4, 5);
+    Tensor kernel (4, 3, 4, 5);
+    input.fill_random(23u, -1.0f, 1.0f);
+    kernel.fill_random(124u, -1.0f, 1.0f);
+
+    const Tensor out_naive = conv_naive (input, kernel);
+    const Tensor out_im2col = conv_im2col (input, kernel);
+
+    EXPECT_EQ(out_naive.n(), 2u);
+    EXPECT_EQ(out_naive.c(), 4u);
+    EXPECT_EQ(out_naive.h(), 1u);
+    EXPECT_EQ(out_naive.w(), 1u);
+
+    EXPECT_EQ(out_im2col.n(), out_naive.n());
+    EXPECT_EQ(out_im2col.c(), out_naive.c());
+    EXPECT_EQ(out_im2col.h(), out_naive.h());
+    EXPECT_EQ(out_im2col.w(), out_naive.w());
+    ASSERT_EQ(out_im2col.size(), out_naive.size());
+
+    for (std::size_t i = 0; i < out_naive.size(); ++i)
+    {
+        EXPECT_NEAR(out_im2col.data()[i], out_naive.data()[i], 1e-4f) << "element #" << i;
+    }
+}
