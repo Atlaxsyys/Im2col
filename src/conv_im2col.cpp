@@ -6,6 +6,23 @@
 
 namespace
 {
+using GemmFn = void (*) (const float*, const float*, float*, std::size_t, std::size_t, std::size_t);
+
+GemmFn select_gemm (GemmBackend backend)
+{
+    switch (backend)
+    {
+    case GemmBackend::Naive:
+        return &gemm_naive;
+    case GemmBackend::CacheFriendly:
+        return &gemm_cache_friendly;
+    case GemmBackend::Intrinsics:
+        return &gemm_intrinsics;
+    default:
+        return &gemm_naive;
+    }
+}
+
 void im2col_nchw (
     const float* input_n,
     std::size_t in_c,
@@ -47,7 +64,7 @@ void im2col_nchw (
 
 } // namespace
 
-Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
+Tensor conv_im2col (const Tensor& input, const Tensor& kernel, GemmBackend backend)
 {
     const std::size_t batch = input.n();
     const std::size_t in_c = input.c();
@@ -77,6 +94,7 @@ Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
 
     const std::size_t in_n_stride = in_c * in_h * in_w;
     const std::size_t out_n_stride = out_c * out_size;
+    const GemmFn gemm = select_gemm (backend);
 
     std::vector<float> col(k_size * out_size);
 
@@ -86,8 +104,13 @@ Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
         float* output_n = output_data + n * out_n_stride;
 
         im2col_nchw (input_n, in_c, in_h, in_w, k_h, k_w, out_h, out_w, col.data());
-        gemm_naive (kernel_data, col.data(), output_n, out_c, k_size, out_size);
+        gemm (kernel_data, col.data(), output_n, out_c, k_size, out_size);
     }
 
     return output;
+}
+
+Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
+{
+    return conv_im2col (input, kernel, GemmBackend::Naive);
 }
