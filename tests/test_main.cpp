@@ -303,3 +303,48 @@ TEST(GemmTest, CacheFriendlyMatchesNaive)
         }
     }
 }
+
+TEST(GemmTest, IntrinsicsMatchesNaive)
+{
+    struct Case
+    {
+        std::size_t m;
+        std::size_t k;
+        std::size_t n;
+    };
+
+    const Case cases[] = {
+        {1, 1, 1},
+        {3, 5, 7},
+        {8, 13, 9},
+        {31, 17, 33},
+        {64, 64, 64},
+    };
+
+    for (std::size_t case_idx = 0; case_idx < std::size(cases); ++case_idx)
+    {
+        const Case& tc = cases[case_idx];
+        std::vector<float> a(tc.m * tc.k);
+        std::vector<float> b(tc.k * tc.n);
+        std::vector<float> c_ref(tc.m * tc.n);
+        std::vector<float> c_opt(tc.m * tc.n);
+
+        for (std::size_t i = 0; i < a.size(); ++i)
+        {
+            a[i] = static_cast<float>((static_cast<int>(i % 17) - 8)) / 8.0f;
+        }
+        for (std::size_t i = 0; i < b.size(); ++i)
+        {
+            b[i] = static_cast<float>((static_cast<int>(i % 19) - 9)) / 9.0f;
+        }
+
+        gemm_naive(a.data(), b.data(), c_ref.data(), tc.m, tc.k, tc.n);
+        gemm_intrinsics(a.data(), b.data(), c_opt.data(), tc.m, tc.k, tc.n);
+
+        ASSERT_EQ(c_ref.size(), c_opt.size()) << "case #" << case_idx;
+        for (std::size_t i = 0; i < c_ref.size(); ++i)
+        {
+            EXPECT_NEAR(c_ref[i], c_opt[i], 1e-4f) << "case #" << case_idx << ", element #" << i;
+        }
+    }
+}

@@ -17,3 +17,11 @@ void gemm_cache_friendly (
     std::size_t m,
     std::size_t k,
     std::size_t n);
+
+void gemm_intrinsics (
+    const float* a,
+    const float* b,
+    float* c,
+    std::size_t m,
+    std::size_t k,
+    std::size_t n);
