@@ -7,17 +7,20 @@ Comparison of two 2D convolution algorithms for 4D float tensors in C++20.
 ### Naive (direct) convolution
 
 Computes the output directly via nested loops. For an input tensor of shape
-`[N, C, H, W]`, a kernel of shape `[C_out, C_in, K, K]` (with `C_out = C_in = C`),
-and fixed `stride = 1`, `padding = 0`, the formula is:
+$[N, C, H, W]$, a kernel of shape $[C_{\text{out}}, C_{\text{in}}, K, K]$ (with $C_{\text{out}} = C_{\text{in}} = C$),
+and fixed $\text{stride} = 1$, $\text{padding} = 0$, the formula is:
 
+```math
+\text{output}[n,\, oc,\, oh,\, ow]
+= \sum_{ic=0}^{C-1}\sum_{kh=0}^{K-1}\sum_{kw=0}^{K-1}
+  \text{input}[n,\, ic,\, oh+kh,\, ow+kw]
+  \cdot
+  \text{kernel}[oc,\, ic,\, kh,\, kw]
 ```
-output[n, oc, oh, ow] = Σ_{ic, kh, kw}  input[n, ic, oh+kh, ow+kw]
-                                        × kernel[oc, ic, kh, kw]
-```
 
-Output shape: `[N, C, H_out, W_out]` where `H_out = H − K + 1`, `W_out = W − K + 1`.
+Output shape: $[N,\, C,\, H_{\text{out}},\, W_{\text{out}}]$ where $H_{\text{out}} = H - K + 1$, $W_{\text{out}} = W - K + 1$.
 
-Complexity: `O(N · C_out · H_out · W_out · C_in · K²)`.
+Complexity: $O(N \cdot C_{\text{out}} \cdot H_{\text{out}} \cdot W_{\text{out}} \cdot C_{\text{in}} \cdot K^2)$.
 
 ### Explicit im2col + GEMM
 
@@ -25,26 +28,28 @@ Reduces convolution to a single matrix multiplication in two steps.
 
 **Step 1 — im2col.**
 For each sample `n`, the receptive-field patches of the input are unrolled into
-a matrix `col` of shape `(C·K·K) × (H_out·W_out)`.
-Each column of `col` contains the `C·K·K` values seen by one output position,
+a matrix $\text{col}$ of shape $(C \cdot K^2) \times (H_{\text{out}} \cdot W_{\text{out}})$.
+Each column of $\text{col}$ contains the $C \cdot K^2$ values seen by one output position,
 laid out in the same order as the flattened kernel.
 
-```
-col[c·K·K + kh·K + kw,  oh·W_out + ow] = input[n, c, oh+kh, ow+kw]
+```math
+\text{col}[\,c \cdot K^2 + kh \cdot K + kw,\;\; oh \cdot W_{\text{out}} + ow\,]
+= \text{input}[n,\, c,\, oh+kh,\, ow+kw]
 ```
 
 The explicit matrix is allocated in memory, so overlapping patches are duplicated.
-Memory overhead: `C · K² · H_out · W_out` floats per sample — up to `K²` times
+Memory overhead: $C \cdot K^2 \cdot H_{\text{out}} \cdot W_{\text{out}}$ floats per sample — up to $K^2$ times
 the input size for large kernels.
 
 **Step 2 — GEMM.**
-Reshape the kernel to a matrix `W` of shape `C_out × (C·K·K)` and compute:
+Reshape the kernel to a matrix $W$ of shape $C_{\text{out}} \times (C \cdot K^2)$ and compute:
 
-```
-output_n = W × col        [C_out × (H_out·W_out)]
+```math
+\text{output}_n = W \times \text{col}
+\qquad \bigl[C_{\text{out}} \times (H_{\text{out}} \cdot W_{\text{out}})\bigr]
 ```
 
-The result is written back as `output[n, :, :, :]`.
+The result is written back as $\text{output}[n, :, :, :]$.
 
 Three GEMM implementations are provided and compared:
 
@@ -157,4 +162,4 @@ by 5–7×. Adding NEON intrinsics with dual-accumulator unroll brings a further
 **The advantage grows with kernel size:** larger K raises GEMM arithmetic
 intensity relative to the fixed im2col overhead, so the gap widens from 7.7×
 at K = 3 to 8.5× at K = 11. The cost is memory — explicit im2col duplicates
-overlapping patches, consuming up to `K²` times more data than the raw input.
+overlapping patches, consuming up to $K^2$ times more data than the raw input.
