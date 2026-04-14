@@ -11,6 +11,7 @@ option(BUILD_BENCHMARKS "Build benchmark executable" ON)
 add_library(im2col_lib
     src/tensor.cpp
     src/matrix.cpp
+    src/gemm.cpp
     src/conv_naive.cpp
     src/conv_im2col.cpp
 )

@@ -1,6 +1,6 @@
 #include "conv_im2col.hpp"
+#include "gemm.hpp"
 
-#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -45,37 +45,6 @@ void im2col_nchw (
     }
 }
 
-void matmul (
-    const float* a,
-    const float* b,
-    float* c,
-    std::size_t m,
-    std::size_t k,
-    std::size_t n)
-{
-    std::fill(c, c + m * n, 0.0f);
-
-    for (std::size_t i = 0; i < m; ++i)
-    {
-        const float* a_row = a + i * k;
-        float* c_row = c + i * n;
-
-        for (std::size_t p = 0; p < k; ++p)
-        {
-            const float a_ip = a_row[p];
-            if (a_ip == 0.0f)
-            {
-                continue;
-            }
-
-            const float* b_row = b + p * n;
-            for (std::size_t j = 0; j < n; ++j)
-            {
-                c_row[j] += a_ip * b_row[j];
-            }
-        }
-    }
-}
 } // namespace
 
 Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
@@ -117,7 +86,7 @@ Tensor conv_im2col (const Tensor& input, const Tensor& kernel)
         float* output_n = output_data + n * out_n_stride;
 
         im2col_nchw (input_n, in_c, in_h, in_w, k_h, k_w, out_h, out_w, col.data());
-        matmul (kernel_data, col.data(), output_n, out_c, k_size, out_size);
+        gemm_naive (kernel_data, col.data(), output_n, out_c, k_size, out_size);
     }
 
     return output;
