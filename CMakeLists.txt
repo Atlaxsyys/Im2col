@@ -20,6 +20,23 @@ target_include_directories(im2col_lib
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+if(BUILD_BENCHMARKS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(im2col_lib
+        PRIVATE
+            $<$<CONFIG:Release>:-O3>
+            $<$<CONFIG:Release>:-DNDEBUG>
+            $<$<CONFIG:Release>:-march=native>
+    )
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64|i[3-6]86)$")
+        target_compile_options(im2col_lib
+            PRIVATE
+                $<$<CONFIG:Release>:-mavx2>
+                $<$<CONFIG:Release>:-mfma>
+        )
+    endif()
+endif()
+
 if(BUILD_BENCHMARKS)
     include(FetchContent)
 
@@ -42,6 +59,23 @@ if(BUILD_BENCHMARKS)
             im2col_lib
             benchmark::benchmark_main
     )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(im2col_bench
+            PRIVATE
+                $<$<CONFIG:Release>:-O3>
+                $<$<CONFIG:Release>:-DNDEBUG>
+                $<$<CONFIG:Release>:-march=native>
+        )
+
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64|i[3-6]86)$")
+            target_compile_options(im2col_bench
+                PRIVATE
+                    $<$<CONFIG:Release>:-mavx2>
+                    $<$<CONFIG:Release>:-mfma>
+            )
+        endif()
+    endif()
 endif()
 
 if(BUILD_TESTING)
