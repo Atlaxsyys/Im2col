@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iterator>
 #include <vector>
 
 TEST(TensorTest, Basics)
@@ -258,6 +259,57 @@ TEST(ConvEdgeCaseTest, ExactKernelFitProducesOneByOneOutputAndParity)
     for (std::size_t i = 0; i < out_naive.size(); ++i)
     {
         EXPECT_NEAR(out_im2col.data()[i], out_naive.data()[i], 1e-4f) << "element #" << i;
+    }
+}
+
+TEST(ConvStrideAndPaddingTest, Im2colMatchesNaive)
+{
+    struct Case
+    {
+        std::size_t   n, in_c, in_h, in_w, out_c, k_h, k_w;
+        std::size_t   stride, padding;
+        std::uint32_t input_seed, kernel_seed;
+    };
+
+    const Case cases[] = {
+        {1, 1,  7,  7, 1, 3, 3, 2, 0, 31u, 131u},
+        {1, 2,  5,  5, 2, 3, 3, 1, 1, 32u, 132u},
+        {2, 4,  8,  8, 4, 3, 3, 2, 1, 33u, 133u},
+        {1, 3,  6,  6, 3, 5, 5, 1, 2, 34u, 134u},
+        {2, 8, 16, 16, 8, 3, 3, 2, 1, 35u, 135u},
+    };
+
+    for (std::size_t case_idx = 0; case_idx < std::size(cases); ++case_idx)
+    {
+        const Case& tc = cases[case_idx];
+
+        Tensor input  (tc.n, tc.in_c, tc.in_h, tc.in_w);
+        Tensor kernel (tc.out_c, tc.in_c, tc.k_h, tc.k_w);
+        input.fill_random  (tc.input_seed,  -1.0f, 1.0f);
+        kernel.fill_random (tc.kernel_seed, -1.0f, 1.0f);
+
+        const Tensor out_naive  = conv_naive  (input, kernel, tc.stride, tc.padding);
+        const Tensor out_im2col = conv_im2col (input, kernel, tc.stride, tc.padding);
+
+        const std::size_t expected_h = (tc.in_h + 2 * tc.padding - tc.k_h) / tc.stride + 1;
+        const std::size_t expected_w = (tc.in_w + 2 * tc.padding - tc.k_w) / tc.stride + 1;
+
+        EXPECT_EQ(out_naive.n(), tc.n)       << "case #" << case_idx;
+        EXPECT_EQ(out_naive.c(), tc.out_c)   << "case #" << case_idx;
+        EXPECT_EQ(out_naive.h(), expected_h) << "case #" << case_idx;
+        EXPECT_EQ(out_naive.w(), expected_w) << "case #" << case_idx;
+
+        EXPECT_EQ(out_im2col.n(), out_naive.n()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.c(), out_naive.c()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.h(), out_naive.h()) << "case #" << case_idx;
+        EXPECT_EQ(out_im2col.w(), out_naive.w()) << "case #" << case_idx;
+        ASSERT_EQ(out_im2col.size(), out_naive.size()) << "case #" << case_idx;
+
+        for (std::size_t i = 0; i < out_naive.size(); ++i)
+        {
+            EXPECT_NEAR(out_im2col.data()[i], out_naive.data()[i], 1e-4f)
+                << "case #" << case_idx << ", element #" << i;
+        }
     }
 }
 

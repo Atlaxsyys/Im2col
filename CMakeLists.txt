@@ -60,21 +60,33 @@ if(BUILD_BENCHMARKS)
             benchmark::benchmark_main
     )
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-        target_compile_options(im2col_bench
-            PRIVATE
-                $<$<CONFIG:Release>:-O3>
-                $<$<CONFIG:Release>:-DNDEBUG>
-                $<$<CONFIG:Release>:-march=native>
-        )
+    add_executable(gemm_bench
+        bench/bench_gemm.cpp
+    )
 
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64|i[3-6]86)$")
-            target_compile_options(im2col_bench
+    target_link_libraries(gemm_bench
+        PRIVATE
+            im2col_lib
+            benchmark::benchmark_main
+    )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        foreach(target IN ITEMS im2col_bench gemm_bench)
+            target_compile_options(${target}
                 PRIVATE
-                    $<$<CONFIG:Release>:-mavx2>
-                    $<$<CONFIG:Release>:-mfma>
+                    $<$<CONFIG:Release>:-O3>
+                    $<$<CONFIG:Release>:-DNDEBUG>
+                    $<$<CONFIG:Release>:-march=native>
             )
-        endif()
+
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64|i[3-6]86)$")
+                target_compile_options(${target}
+                    PRIVATE
+                        $<$<CONFIG:Release>:-mavx2>
+                        $<$<CONFIG:Release>:-mfma>
+                )
+            endif()
+        endforeach()
     endif()
 endif()
 

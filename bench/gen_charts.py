@@ -3,13 +3,14 @@
 
 Usage:
     ./build/im2col_bench --benchmark_format=json --benchmark_out=docs/results.json
-    python3 bench/gen_charts.py          # uses docs/results.json by default
-    python3 bench/gen_charts.py path/to/results.json
+    ./build/gemm_bench   --benchmark_format=json --benchmark_out=docs/results_gemm.json
+    python3 bench/gen_charts.py          # uses docs/results.json + docs/results_gemm.json
 
-Produces three SVG files in docs/:
-    docs/gemm_comparison.svg   -- naive / cache-friendly / intrinsics GEMM
+Produces SVG files in docs/:
+    docs/gemm_comparison.svg   -- naive / cache-friendly / intrinsics GEMM (via conv)
     docs/conv_comparison.svg   -- conv_naive vs conv_im2col + intrinsics
     docs/speedup.svg           -- speedup line chart
+    docs/gemm_size.svg         -- standalone GEMM time vs matrix size
 """
 
 import json, sys, os, math
@@ -299,12 +300,129 @@ def make_speedup_chart(data, k_values, out_path):
     print(f"Written {out_path}")
 
 
+GEMM_COLORS = {
+    "BM_GemmNaive":         "#58a6ff",
+    "BM_GemmCacheFriendly": "#3fb950",
+    "BM_GemmIntrinsics":    "#f78166",
+}
+GEMM_LABELS = {
+    "BM_GemmNaive":         "naive",
+    "BM_GemmCacheFriendly": "cache-friendly",
+    "BM_GemmIntrinsics":    "intrinsics",
+}
+
+
+# ── GEMM JSON parsing ──────────────────────────────────────────────────────────
+def parse_gemm_results(path):
+    with open(path) as f:
+        raw = json.load(f)
+
+    out     = {}
+    has_agg = any(bm.get("aggregate_name") == "median"
+                  for bm in raw["benchmarks"])
+
+    for bm in raw["benchmarks"]:
+        agg = bm.get("aggregate_name", "")
+        if has_agg:
+            if agg != "median":
+                continue
+        else:
+            if bm.get("run_type") == "aggregate":
+                continue
+
+        name  = bm["name"].removesuffix(f"_{agg}") if agg else bm["name"]
+        parts = name.split("/")
+        if len(parts) < 2:
+            continue
+        bname = parts[0]
+        N     = int(parts[1])
+
+        t    = bm["real_time"]
+        unit = bm.get("time_unit", "ns")
+        t_ms = {"ns": t / 1e6, "us": t / 1e3, "ms": t, "s": t * 1e3}[unit]
+
+        out.setdefault(bname, {})[N] = t_ms
+
+    mode = "median" if has_agg else "single run"
+    print(f"  mode: {mode}")
+    return out
+
+
+# ── GEMM line chart ────────────────────────────────────────────────────────────
+def make_gemm_line_chart(data, out_path):
+    series_keys = ["BM_GemmNaive", "BM_GemmCacheFriendly", "BM_GemmIntrinsics"]
+    series = [(k, GEMM_COLORS[k], GEMM_LABELS[k]) for k in series_keys if k in data]
+
+    if not series:
+        print(f"  no GEMM data for {out_path}, skipping")
+        return
+
+    all_sizes = sorted({N for bk, _, _ in series for N in data[bk]})
+    if not all_sizes:
+        return
+
+    W, H            = 700, 460
+    ML, MR, MT, MB  = 78, 40, 58, 80
+    cw = W - ML - MR
+    ch = H - MT - MB
+
+    max_t         = max(data[bk][N]
+                        for bk, _, _ in series
+                        for N in all_sizes if N in data[bk])
+    y_max, y_step = nice_scale(max_t * 1.15)
+
+    def px(N):
+        i = all_sizes.index(N)
+        return ML + (i * cw / (len(all_sizes) - 1)) if len(all_sizes) > 1 else ML + cw / 2
+
+    def py(t):
+        return MT + ch - ch * t / y_max
+
+    L = [svg_open(W, H)]
+    L.append(svgtext(W / 2, 30, "GEMM: time vs matrix size (N×N×N)", size=14, bold=True))
+
+    n_ticks = round(y_max / y_step)
+    for i in range(n_ticks + 1):
+        v   = i * y_step
+        y   = py(v)
+        dash = "4,4" if i > 0 else ""
+        col  = GRID_COLOR if i > 0 else AXIS_COLOR
+        L.append(svgline(ML, y, ML + cw, y, color=col, dash=dash))
+        L.append(svgtext(ML - 8, y + 4, f"{v:.1f}", anchor="end", size=10, color=DIM_COLOR))
+
+    L.append(svgrottext(16, MT + ch / 2, "time, ms", -90, size=11))
+    L.append(svgline(ML, MT + ch, ML + cw, MT + ch))
+
+    for bk, color, _ in series:
+        pts = [(px(N), py(data[bk][N])) for N in all_sizes if N in data[bk]]
+        if pts:
+            L.append(svgpolyline(pts, color))
+            for x, y in pts:
+                L.append(svgcircle(x, y, 4, color))
+
+    for N in all_sizes:
+        L.append(svgtext(px(N), MT + ch + 18, str(N), size=12))
+    L.append(svgtext(W / 2, MT + ch + 40, "matrix size N", size=11, color=DIM_COLOR))
+
+    leg_x, leg_y = ML, MT + ch + 56
+    for idx, (bk, color, label) in enumerate(series):
+        lx = leg_x + idx * (cw // len(series))
+        L.append(svgrect(lx, leg_y - 10, 13, 13, color, rx=2))
+        L.append(svgtext(lx + 18, leg_y, label, anchor="start", size=11, color=LABEL_COLOR))
+
+    L.append(svg_close())
+    with open(out_path, "w") as f:
+        f.writelines(L)
+    print(f"Written {out_path}")
+
+
 # ── main ───────────────────────────────────────────────────────────────────────
 DOCS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
 
 def main():
-    json_path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(DOCS_DIR, "results.json")
-    out_dir   = DOCS_DIR
+    json_path      = sys.argv[1] if len(sys.argv) > 1 else os.path.join(DOCS_DIR, "results.json")
+    gemm_json_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(DOCS_DIR, "results_gemm.json")
+    out_dir        = DOCS_DIR
     os.makedirs(out_dir, exist_ok=True)
 
     print(f"Parsing {json_path} ...")
@@ -335,6 +453,13 @@ def main():
         k_values,
         os.path.join(out_dir, "speedup.svg"),
     )
+
+    if os.path.exists(gemm_json_path):
+        print(f"Parsing {gemm_json_path} ...")
+        gemm_data = parse_gemm_results(gemm_json_path)
+        make_gemm_line_chart(gemm_data, os.path.join(out_dir, "gemm_size.svg"))
+    else:
+        print(f"  {gemm_json_path} not found, skipping gemm_size.svg")
 
 
 if __name__ == "__main__":
