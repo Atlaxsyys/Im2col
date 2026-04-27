@@ -91,6 +91,12 @@ Run benchmarks and generate charts:
     --benchmark_format=json \
     --benchmark_out=docs/results.json
 
+./build/gemm_bench \
+    --benchmark_repetitions=7 \
+    --benchmark_report_aggregates_only=true \
+    --benchmark_format=json \
+    --benchmark_out=docs/results_gemm.json
+
 python3 bench/gen_charts.py
 ```
 
@@ -135,6 +141,21 @@ python3 bench/gen_charts.py
 |  7 |  56.48 |  7.83 |  4.97 | 7.2× | 11.4× |
 |  9 |  82.50 | 11.36 |  6.89 | 7.3× | 12.0× |
 | 11 | 105.52 | 13.84 |  8.85 | 7.6× | 11.9× |
+
+---
+
+### Standalone GEMM — time vs matrix size (N×N×N)
+
+| N | naive GEMM (ms) | cache-friendly (ms) | intrinsics (ms) | cf / naive | intrin / naive |
+|:-:|--:|--:|--:|--:|--:|
+|  64 |  0.09 |  0.03 |  0.02 |  3.3× |  4.0× |
+| 128 |  0.99 |  0.20 |  0.12 |  4.9× |  8.1× |
+| 256 |  9.84 |  1.63 |  1.05 |  6.0× |  9.3× |
+| 512 | 90.94 | 15.25 |  8.25 |  6.0× | 11.0× |
+
+**GEMM time vs matrix size**
+
+![GEMM size](docs/gemm_size.svg)
 
 ---
 

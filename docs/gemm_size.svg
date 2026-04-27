@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="460" viewBox="0 0 700 460">
+  <text x="350.0" y="30.0" text-anchor="middle" style="font-family:sans-serif;font-size:14px;font-weight:700;" fill="#c9d1d9">GEMM: time vs matrix size (N×N×N)</text>
+  <line x1="78.0" y1="380.0" x2="660.0" y2="380.0" stroke="#8b949e" stroke-width="1.5"/>
+  <text x="70.0" y="384.0" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">0.0</text>
+  <line x1="78.0" y1="315.6" x2="660.0" y2="315.6" stroke="#21262d" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="70.0" y="319.6" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">25.0</text>
+  <line x1="78.0" y1="251.2" x2="660.0" y2="251.2" stroke="#21262d" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="70.0" y="255.2" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">50.0</text>
+  <line x1="78.0" y1="186.8" x2="660.0" y2="186.8" stroke="#21262d" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="70.0" y="190.8" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">75.0</text>
+  <line x1="78.0" y1="122.4" x2="660.0" y2="122.4" stroke="#21262d" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="70.0" y="126.4" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">100.0</text>
+  <line x1="78.0" y1="58.0" x2="660.0" y2="58.0" stroke="#21262d" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="70.0" y="62.0" text-anchor="end" style="font-family:sans-serif;font-size:10px;" fill="#6e7681">125.0</text>
+  <text x="16.0" y="219.0" text-anchor="middle" transform="rotate(-90,16.0,219.0)" style="font-family:sans-serif;font-size:11px;" fill="#6e7681">time, ms</text>
+  <line x1="78.0" y1="380.0" x2="660.0" y2="380.0" stroke="#8b949e" stroke-width="1.5"/>
+  <polyline points="78.0,379.8 272.0,377.5 466.0,354.7 660.0,145.7" fill="none" stroke="#58a6ff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="78.0" cy="379.8" r="4" fill="#58a6ff"/>
+  <circle cx="272.0" cy="377.5" r="4" fill="#58a6ff"/>
+  <circle cx="466.0" cy="354.7" r="4" fill="#58a6ff"/>
+  <circle cx="660.0" cy="145.7" r="4" fill="#58a6ff"/>
+  <polyline points="78.0,379.9 272.0,379.5 466.0,375.8 660.0,340.7" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="78.0" cy="379.9" r="4" fill="#3fb950"/>
+  <circle cx="272.0" cy="379.5" r="4" fill="#3fb950"/>
+  <circle cx="466.0" cy="375.8" r="4" fill="#3fb950"/>
+  <circle cx="660.0" cy="340.7" r="4" fill="#3fb950"/>
+  <polyline points="78.0,379.9 272.0,379.7 466.0,377.3 660.0,358.7" fill="none" stroke="#f78166" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="78.0" cy="379.9" r="4" fill="#f78166"/>
+  <circle cx="272.0" cy="379.7" r="4" fill="#f78166"/>
+  <circle cx="466.0" cy="377.3" r="4" fill="#f78166"/>
+  <circle cx="660.0" cy="358.7" r="4" fill="#f78166"/>
+  <text x="78.0" y="398.0" text-anchor="middle" style="font-family:sans-serif;font-size:12px;" fill="#c9d1d9">64</text>
+  <text x="272.0" y="398.0" text-anchor="middle" style="font-family:sans-serif;font-size:12px;" fill="#c9d1d9">128</text>
+  <text x="466.0" y="398.0" text-anchor="middle" style="font-family:sans-serif;font-size:12px;" fill="#c9d1d9">256</text>
+  <text x="660.0" y="398.0" text-anchor="middle" style="font-family:sans-serif;font-size:12px;" fill="#c9d1d9">512</text>
+  <text x="350.0" y="420.0" text-anchor="middle" style="font-family:sans-serif;font-size:11px;" fill="#6e7681">matrix size N</text>
+  <rect x="78.0" y="426.0" width="13.0" height="13.0" fill="#58a6ff" fill-opacity="0.85" rx="2"/>
+  <text x="96.0" y="436.0" text-anchor="start" style="font-family:sans-serif;font-size:11px;" fill="#c9d1d9">naive</text>
+  <rect x="272.0" y="426.0" width="13.0" height="13.0" fill="#3fb950" fill-opacity="0.85" rx="2"/>
+  <text x="290.0" y="436.0" text-anchor="start" style="font-family:sans-serif;font-size:11px;" fill="#c9d1d9">cache-friendly</text>
+  <rect x="466.0" y="426.0" width="13.0" height="13.0" fill="#f78166" fill-opacity="0.85" rx="2"/>
+  <text x="484.0" y="436.0" text-anchor="start" style="font-family:sans-serif;font-size:11px;" fill="#c9d1d9">intrinsics</text>
+</svg>
